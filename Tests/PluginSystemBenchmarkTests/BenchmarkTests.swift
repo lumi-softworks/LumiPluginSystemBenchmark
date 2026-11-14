@@ -45,6 +45,43 @@ struct BenchmarkTests {
         #expect(contentView.setCount == 1)
     }
 
+    @Test("disable retracts the entry and enable restores it")
+    func lifecycleTogglesEntryAndContent() async throws {
+        @MainActor final class TrackingContentView: ContentViewProviding {
+            var lastViewIsNil: Bool?
+
+            func setContentView(_ view: AnyView?) {
+                lastViewIsNil = view == nil
+            }
+
+            func makeContentView() -> AnyView {
+                AnyView(EmptyView())
+            }
+        }
+
+        let kernel = KernelCoreContainer()
+        let activityBar = DefaultActivityBarProviding()
+        let contentView = TrackingContentView()
+        activityBar.registerItems([
+            ActivityBarItem(id: "other", title: "Other", systemImage: "circle"),
+        ])
+        try kernel.registerProvider((any ActivityBarProviding).self, activityBar)
+        try kernel.registerProvider((any ContentViewProviding).self, contentView)
+
+        let plugin = SystemBenchmarkPlugin()
+        try plugin.onBoot(kernel: kernel)
+        let entryID = "\(plugin.id).entry"
+        #expect(activityBar.items.contains { $0.id == entryID })
+
+        try await plugin.onDisable(kernel: kernel)
+        #expect(!activityBar.items.contains { $0.id == entryID })
+        // 入口栏仍由另一个入口支撑，内容仍归入口栏管理，不应被清空。
+        #expect(contentView.lastViewIsNil == nil)
+
+        try await plugin.onEnable(kernel: kernel)
+        #expect(activityBar.items.contains { $0.id == entryID })
+    }
+
     @Test("progress advances in benchmark order")
     func progressFractions() {
         #expect(BenchmarkProgress.preparing.fraction == 0)

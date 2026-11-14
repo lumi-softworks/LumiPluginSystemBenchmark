@@ -76,6 +76,17 @@ public final class SystemBenchmarkPlugin: SuperPlugin {
         }
     }
 
+    /// 运行时启用：重新走一遍 Boot 注册入口（入口按 id 去重，可重复调用）。
+    public func onEnable(kernel: KernelCoreContainer) async throws {
+        try onBoot(kernel: kernel)
+    }
+
+    /// 运行时禁用：撤回入口、取消在跑的测速并清掉内容，
+    /// 否则插件管理里关掉后入口仍会留在入口栏。
+    public func onDisable(kernel: KernelCoreContainer) async throws {
+        try onShutdown(kernel: kernel)
+    }
+
     public func onShutdown(kernel: KernelCoreContainer) throws {
         viewModel?.cancel()
         viewModel = nil
