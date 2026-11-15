@@ -35,6 +35,9 @@ let package = Package(
             path: "Sources/PluginSystemBenchmark",
             resources: [
                 .process("../../Resources/Localizable.xcstrings")
+            ],
+            linkerSettings: [
+                .linkedFramework("IOKit")
             ]
         ),
         .testTarget(
