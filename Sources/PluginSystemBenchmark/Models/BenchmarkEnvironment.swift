@@ -1,6 +1,8 @@
 import Darwin
 import Foundation
+#if os(macOS)
 import IOKit.ps
+#endif
 
 /// 结果的一部分：同一台机器在不同电源、热状态与后台负载下会给出不同分数。
 ///
@@ -94,6 +96,7 @@ public struct BenchmarkEnvironment: Equatable, Codable, Sendable {
     }
 
     private static func currentPowerSource() -> PowerSource {
+        #if os(macOS)
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String?
         else {
@@ -104,6 +107,10 @@ public struct BenchmarkEnvironment: Equatable, Codable, Sendable {
         case "Battery Power": return .battery
         default: return .unknown
         }
+        #else
+        // iOS 没有可查询供电来源的等价私有 API，报告为未知。
+        return .unknown
+        #endif
     }
 
     private static func sysctlString(_ name: String) -> String? {

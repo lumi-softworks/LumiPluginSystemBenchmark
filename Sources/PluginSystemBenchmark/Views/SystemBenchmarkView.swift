@@ -1,5 +1,9 @@
-import AppKit
 import Foundation
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 import LumiUI
 import SwiftUI
 
@@ -739,6 +743,7 @@ private struct SystemBenchmarkDashboardView: View {
             return
         }
 
+        #if os(macOS)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = exported.suggestedName
         panel.canCreateDirectories = true
@@ -751,6 +756,26 @@ private struct SystemBenchmarkDashboardView: View {
         } catch {
             viewModel.noteExportFailure(error)
         }
+        #else
+        // iOS 没有 NSSavePanel：写入临时目录后交给系统分享面板。
+        do {
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent(exported.suggestedName)
+            try exported.content.write(to: url, atomically: true, encoding: .utf8)
+            let activity = UIActivityViewController(
+                activityItems: [url],
+                applicationActivities: nil
+            )
+            UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+                .first?
+                .rootViewController?
+                .present(activity, animated: true)
+            viewModel.noteExported(fileName: exported.suggestedName)
+        } catch {
+            viewModel.noteExportFailure(error)
+        }
+        #endif
     }
 
     private func phaseTitle(_ phase: BenchmarkProgress.Phase) -> String {
